@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import type { AuthenticatedHandler, KaappuAuthContext } from './types'
 import { KaappuAuthError } from './types'
 import {
-  HEADER_USER_ID, HEADER_ACCOUNT_ID, HEADER_EMAIL, HEADER_SESSION_ID
+  HEADER_USER_ID, HEADER_ACCOUNT_ID, HEADER_EMAIL, HEADER_SESSION_ID, HEADER_PERMISSIONS
 } from './pipeline'
 
 /**
@@ -43,11 +43,23 @@ export function withAuth(
       )
     }
 
+    const permHeader = req.headers.get(HEADER_PERMISSIONS) ?? ''
+    const permissions = permHeader ? permHeader.split(',') : []
+
     const auth: KaappuAuthContext = {
       userId,
       accountId: req.headers.get(HEADER_ACCOUNT_ID) ?? '',
       email: req.headers.get(HEADER_EMAIL) ?? '',
       sessionId: req.headers.get(HEADER_SESSION_ID) ?? '',
+      permissions,
+    }
+
+    // Check required permission if specified
+    if (options?.permission && !permissions.includes('*') && !permissions.includes(options.permission)) {
+      return NextResponse.json(
+        { success: false, error: 'Forbidden', code: 'forbidden' },
+        { status: 403 }
+      )
     }
 
     const resolvedParams = context?.params instanceof Promise

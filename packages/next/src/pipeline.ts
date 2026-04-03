@@ -7,6 +7,7 @@ export const HEADER_USER_ID = 'x-kaappu-user-id'
 export const HEADER_ACCOUNT_ID = 'x-kaappu-account-id'
 export const HEADER_EMAIL = 'x-kaappu-email'
 export const HEADER_SESSION_ID = 'x-kaappu-session-id'
+export const HEADER_PERMISSIONS = 'x-kaappu-permissions'
 
 function matchesPublicRoute(pathname: string, publicRoutes: string[]): boolean {
   return publicRoutes.some(pattern => {
@@ -98,16 +99,17 @@ export function kaappuPipeline(pipelineConfig: KaappuPipelineConfig) {
   }
 }
 
-function injectHeaders(res: NextResponse, auth: { userId: string; accountId: string; email: string; sessionId: string }): NextResponse {
+function injectHeaders(res: NextResponse, auth: { userId: string; accountId: string; email: string; sessionId: string; permissions: string[] }): NextResponse {
   const next = NextResponse.next({ request: { headers: new Headers(res.headers) } })
   next.headers.set(HEADER_USER_ID, auth.userId)
   next.headers.set(HEADER_ACCOUNT_ID, auth.accountId)
   next.headers.set(HEADER_EMAIL, auth.email)
   next.headers.set(HEADER_SESSION_ID, auth.sessionId)
+  next.headers.set(HEADER_PERMISSIONS, auth.permissions.join(','))
   return next
 }
 
-function decodeTokenUnsafe(token: string): { userId: string; accountId: string; email: string; sessionId: string } | null {
+function decodeTokenUnsafe(token: string): { userId: string; accountId: string; email: string; sessionId: string; permissions: string[] } | null {
   try {
     const payload = JSON.parse(atob(token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')))
     if (!payload.sub) return null
@@ -116,6 +118,7 @@ function decodeTokenUnsafe(token: string): { userId: string; accountId: string; 
       accountId: payload.tid ?? '',
       email: payload.email ?? '',
       sessionId: payload.sid ?? '',
+      permissions: Array.isArray(payload.permissions) ? payload.permissions : [],
     }
   } catch {
     return null

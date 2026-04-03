@@ -133,17 +133,14 @@ export function LoginPanel({ onSuccess, redirectUrl, appearance, className }: Lo
 
   function handleOAuth(provider: string) {
     const redirect = redirectUrl ?? window.location.href
+    // OAuth flow goes through the app's own API routes (set up by @kaappu/next)
     window.location.href =
-      `${baseUrl}/api/v1/idm/oidc/${provider}/authorize?accountId=${accountId}&redirectUrl=${encodeURIComponent(redirect)}`
+      `/api/auth/oauth/${provider}?redirect=${encodeURIComponent(redirect)}`
   }
 
-  const cssVars = buildCssVars({
-    ...(config?.branding?.primaryColor ? { primaryColor: config.branding.primaryColor } : {}),
-    ...appearance?.variables,
-  })
+  const cssVars = buildCssVars(appearance, config?.branding?.primaryColor)
 
   const activeTabStyle: React.CSSProperties = {
-    borderBottom: '2px solid var(--k-primary)',
     color: 'var(--k-text)',
     fontWeight: 600,
     paddingBottom: '0.5rem',
@@ -157,7 +154,6 @@ export function LoginPanel({ onSuccess, redirectUrl, appearance, className }: Lo
 
   const inactiveTabStyle: React.CSSProperties = {
     paddingBottom: '0.5rem',
-    borderBottom: '2px solid transparent',
     color: 'var(--k-muted)',
     background: 'none',
     border: 'none',
@@ -277,6 +273,35 @@ export function LoginPanel({ onSuccess, redirectUrl, appearance, className }: Lo
           </button>
         </form>
       )}
+
+      {/* Kaappu branding */}
+      <div style={{
+        marginTop: '1.5rem',
+        paddingTop: '1rem',
+        borderTop: '1px solid var(--k-border)',
+        textAlign: 'center',
+      }}>
+        <a
+          href="https://kaappu.dev"
+          target="_blank"
+          rel="noopener noreferrer"
+          style={{
+            fontSize: '0.75rem',
+            color: 'var(--k-muted)',
+            textDecoration: 'none',
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '0.35rem',
+          }}
+        >
+          <svg width="14" height="16" viewBox="0 0 20 22" fill="none" style={{ opacity: 0.8 }}>
+            <path d="M10 1L2 4.5V10c0 5.25 3.4 10.2 8 11.5 4.6-1.3 8-6.25 8-11.5V4.5L10 1z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round"/>
+            <rect x="7" y="9" width="6" height="5" rx="1" stroke="currentColor" strokeWidth="1.3"/>
+            <path d="M8.5 9V7a1.5 1.5 0 0 1 3 0v2" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
+          </svg>
+          Secured by <strong style={{ fontWeight: 600, color: 'var(--k-text)', opacity: 0.6 }}>Kaappu</strong>
+        </a>
+      </div>
     </div>
   )
 }
@@ -292,5 +317,7 @@ function mapUser(raw: any, accountId: string): KaappuUser {
     mfaEnabled: raw.mfaEnabled,
     accountId: raw.accountId ?? accountId,
     sessionId: raw.sessionId ?? '',
+    roles: raw.roles ?? [],
+    permissions: raw.permissions ?? [],
   }
 }

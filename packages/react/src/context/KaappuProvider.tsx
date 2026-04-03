@@ -59,8 +59,37 @@ export function KaappuProvider({
       .catch(() => {})
   }, [publishableKey, baseUrl])
 
-  // Restore session from localStorage on mount
+  // Restore session from localStorage on mount (also sync OAuth cookie → localStorage)
   useEffect(() => {
+    // If an OAuth callback set kaappu_token as a cookie, move it to localStorage
+    const cookieToken = document.cookie.split('; ').find(c => c.startsWith('kaappu_token='))
+    if (cookieToken) {
+      const token = decodeURIComponent(cookieToken.split('=')[1])
+      if (token && !isTokenExpired(token)) {
+        localStorage.setItem(TOKEN_KEY, token)
+        // Clear the cookie now that we've synced it
+        document.cookie = 'kaappu_token=; path=/; max-age=0'
+        // Decode user from token claims
+        const payload = parseJwtPayload(token)
+        if (payload) {
+          const userData: KaappuUser = {
+            id: payload.sub as string,
+            email: payload.email as string,
+            accountId: (payload.tid as string) || 'default',
+            sessionId: (payload.sid as string) || '',
+            permissions: Array.isArray(payload.permissions) ? payload.permissions as string[] : [],
+          }
+          localStorage.setItem(USER_KEY, JSON.stringify(userData))
+          setAccessToken(token)
+          setUser(userData)
+          setIsSignedIn(true)
+          scheduleRefresh(token)
+          setIsLoaded(true)
+          return
+        }
+      }
+    }
+
     const storedToken = getStoredToken()
     const storedUser = localStorage.getItem(USER_KEY)
 
@@ -102,6 +131,7 @@ export function KaappuProvider({
       const newToken = data.data?.accessToken
       if (newToken) {
         localStorage.setItem(TOKEN_KEY, newToken)
+        document.cookie = `kaappu_token=${encodeURIComponent(newToken)}; path=/; max-age=${15 * 60}; samesite=lax`
         setAccessToken(newToken)
         scheduleRefresh(newToken)
         return newToken
@@ -118,6 +148,8 @@ export function KaappuProvider({
     localStorage.removeItem(TOKEN_KEY)
     localStorage.removeItem(REFRESH_KEY)
     localStorage.removeItem(USER_KEY)
+    // Clear the middleware cookie
+    document.cookie = 'kaappu_token=; path=/; max-age=0'
     setAccessToken(null)
     setUser(null)
     setIsSignedIn(false)
@@ -151,6 +183,8 @@ export function KaappuProvider({
     localStorage.setItem(TOKEN_KEY, token)
     localStorage.setItem(REFRESH_KEY, refreshToken)
     localStorage.setItem(USER_KEY, JSON.stringify(userData))
+    // Set cookie so Next.js middleware (server-side) can see the token
+    document.cookie = `kaappu_token=${encodeURIComponent(token)}; path=/; max-age=${15 * 60}; samesite=lax`
     setAccessToken(token)
     setUser(userData)
     setIsSignedIn(true)

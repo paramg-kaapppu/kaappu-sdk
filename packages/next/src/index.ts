@@ -5,6 +5,7 @@ export {
   HEADER_ACCOUNT_ID,
   HEADER_EMAIL,
   HEADER_SESSION_ID,
+  HEADER_PERMISSIONS,
 } from './pipeline'
 
 // Route Handler wrapper

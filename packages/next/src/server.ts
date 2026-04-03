@@ -81,7 +81,7 @@ export async function currentAuthorizedUser(
         headers: token ? { Authorization: `Bearer ${token}` } : {},
         // React cache — deduplicated per request in Server Components
         next: { revalidate: 0 },
-      }
+      } as RequestInit
     )
     if (!res.ok) return null
     const data = await res.json()

@@ -31,6 +31,7 @@ export async function verifyToken(token: string, baseUrl: string): Promise<Kaapp
       accountId: (payload['tid'] as string) ?? '',
       email: (payload['email'] as string) ?? '',
       sessionId: (payload['sid'] as string) ?? '',
+      permissions: Array.isArray(payload['permissions']) ? payload['permissions'] as string[] : [],
     }
   } catch {
     return null

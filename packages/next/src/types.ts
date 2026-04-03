@@ -18,6 +18,7 @@ export interface KaappuAuthContext {
   accountId: string
   email: string
   sessionId: string
+  permissions: string[]
 }
 
 export interface AuthorizeResult {
