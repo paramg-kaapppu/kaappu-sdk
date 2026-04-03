@@ -16,12 +16,15 @@ export { Authorize, LoggedIn, LoggedOut } from './components/Authorize'
 // Theming
 export { createTheme, buildThemeVars, resolveColorScheme } from './theme'
 
-// Types
+// Re-export core types and utilities (so consumers don't need to install @kaappu/core separately)
+export type { KaappuUser, KaappuTenantConfig, KaappuSession, AuthResponse } from '@kaappu/core'
+export { checkPermission, checkAllPermissions, checkAnyPermission, isPermission } from '@kaappu/core'
+export { KaappuApiClient } from '@kaappu/core'
+
+// React-specific types
 export type {
   KaappuContextValue,
   KaappuProviderProps,
-  KaappuTenantConfig,
-  KaappuUser,
   KaappuAppearance,
   LoginPanelProps,
   RegisterPanelProps,
