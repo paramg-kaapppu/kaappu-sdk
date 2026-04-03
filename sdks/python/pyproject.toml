@@ -1,0 +1,23 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "kaappu-sdk"
+version = "0.1.0"
+description = "JWT authentication and permission-based authorization for Python services"
+readme = "README.md"
+license = {text = "MIT"}
+requires-python = ">=3.9"
+dependencies = [
+    "PyJWT[crypto]>=2.8.0",
+    "requests>=2.31.0",
+]
+
+[project.optional-dependencies]
+flask = ["Flask>=2.3.0"]
+fastapi = ["fastapi>=0.100.0"]
+dev = ["pytest>=7.0.0"]
+
+[tool.setuptools.packages.find]
+include = ["kaappu*"]

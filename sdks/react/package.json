@@ -1,8 +1,8 @@
 {
-  "name": "@kaappu/next",
+  "name": "@kaappu/react",
   "version": "0.1.0",
-  "description": "Kaappu Identity — Next.js edge pipeline, server-side helpers, and route guards",
-  "keywords": ["kaappu", "auth", "nextjs", "middleware"],
+  "description": "Kaappu Identity — React components for authentication and authorization",
+  "keywords": ["kaappu", "auth", "identity", "react"],
   "license": "MIT",
   "main": "./dist/index.cjs",
   "module": "./dist/index.js",
@@ -12,11 +12,6 @@
       "import": "./dist/index.js",
       "require": "./dist/index.cjs",
       "types": "./dist/index.d.ts"
-    },
-    "./server": {
-      "import": "./dist/server.js",
-      "require": "./dist/server.cjs",
-      "types": "./dist/server.d.ts"
     }
   },
   "files": ["dist"],
@@ -26,15 +21,17 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@kaappu/core": "workspace:*",
-    "jose": "^5.2.0"
+    "@kaappu/core": "file:../core"
   },
   "peerDependencies": {
-    "next": ">=14.0.0"
+    "react": ">=18.0.0",
+    "react-dom": ">=18.0.0"
   },
   "devDependencies": {
-    "@types/node": "^20.0.0",
-    "next": "^14.2.0",
+    "@types/react": "^18.2.0",
+    "@types/react-dom": "^18.2.0",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
     "tsup": "^8.0.0",
     "typescript": "^5.4.0"
   }

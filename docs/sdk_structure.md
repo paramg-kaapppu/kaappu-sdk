@@ -1,3 +1,30 @@
+kaappu-sdk/                                                                                                                                                                                                       
+packages/                                                                                                                                                                                                       
+core/        @kaappu/core     — Framework-agnostic: types, tokens, permissions, API client, storage                                                                                                           
+react/       @kaappu/react    — React hooks, components (KaappuProvider, LoginPanel, Authorize, etc.)                                                                                                         
+next/        @kaappu/next     — Next.js middleware, withAuth, server helpers                                                                                                                                  
+angular/     @kaappu/angular  — Future: Angular services, guards, interceptors                                                                                                                                
+vue/         @kaappu/vue      — Future: Vue composables, components
+
+What @kaappu/core provides (usable by ANY framework):
+
+┌─────────────┬──────────────────────────────────────────────────────────────────────────────────┐                                                                                                                
+│   Module    │                                     Exports                                      │                                                                                                              
+├─────────────┼──────────────────────────────────────────────────────────────────────────────────┤                                                                                                                
+│ types       │ KaappuUser, KaappuTenantConfig, KaappuSession, AuthResponse                      │                                                                                                              
+├─────────────┼──────────────────────────────────────────────────────────────────────────────────┤
+│ token       │ parseJwtPayload, isTokenExpired, getTokenExpiryMs, extractUserFromToken          │                                                                                                                
+├─────────────┼──────────────────────────────────────────────────────────────────────────────────┤
+│ permissions │ checkPermission, checkAllPermissions, checkAnyPermission, isPermission           │                                                                                                                
+├─────────────┼──────────────────────────────────────────────────────────────────────────────────┤                                                                                                                
+│ api-client  │ KaappuApiClient — signIn, signUp, signOut, refreshToken, getMe, verifyMfa, OAuth │
+├─────────────┼──────────────────────────────────────────────────────────────────────────────────┤                                                                                                                
+│ storage     │ TokenStorage interface, BrowserTokenStorage, MemoryTokenStorage                  │                                                                                                              
+└─────────────┴────────────────────────────────────────────────────────────────
+
+
+
+
 Clerk's SDK Architecture
 
 ┌────────────┬──────────────────────────────────────────────────┬────────────────────────────────┐
@@ -35,4 +62,4 @@ The right architecture is:
 ├── @kaappu/next    ← Next.js middleware + server helpers (uses @kaappu/core)
 ├── @kaappu/vue     ← Vue composables + components (future)
 ├── @kaappu/angular ← Angular services + guards (future)
-└── @kaappu/js      ← Vanilla JS drop-in (future)
+└── @kaappu/js      ← Vanilla JS drop-in (future)   

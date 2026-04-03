@@ -134,6 +134,8 @@ export interface LoginPanelProps {
   onSuccess?: (token: string, user: KaappuUser) => void
   /** Redirect URL after sign-in (used by kaappuPipeline integration) */
   redirectUrl?: string
+  /** Override the logo displayed inside the card (URL or React node) */
+  logoUrl?: string
   /** Appearance overrides */
   appearance?: KaappuAppearance
   /** Custom CSS class for the card wrapper */
@@ -146,6 +148,8 @@ export interface RegisterPanelProps {
   onSuccess?: (token: string, user: KaappuUser) => void
   /** Redirect URL after registration */
   redirectUrl?: string
+  /** Override the logo displayed inside the card (URL or data URI) */
+  logoUrl?: string
   /** Appearance overrides */
   appearance?: KaappuAppearance
   className?: string

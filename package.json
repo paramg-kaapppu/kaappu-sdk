@@ -1,7 +1,7 @@
 {
   "name": "kaappu-sdk",
   "private": true,
-  "workspaces": ["packages/*"],
+  "workspaces": ["sdks/core", "sdks/react", "sdks/next"],
   "scripts": {
     "build": "npm run build --workspaces",
     "dev": "npm run dev --workspaces --if-present",

@@ -7,7 +7,7 @@ import {
   buildCssVars, cardStyle, inputStyle, primaryButtonStyle, labelStyle, errorStyle
 } from './styles'
 
-export function RegisterPanel({ onSuccess, redirectUrl, appearance, className }: RegisterPanelProps) {
+export function RegisterPanel({ onSuccess, redirectUrl, logoUrl, appearance, className }: RegisterPanelProps) {
   const ctx = useContext(KaappuContext) as any
   if (!ctx) throw new Error('[Kaappu] <RegisterPanel> must be inside <KaappuProvider>')
 
@@ -80,8 +80,8 @@ export function RegisterPanel({ onSuccess, redirectUrl, appearance, className }:
     <div style={cssVarsAndCard} className={className}>
       {/* Header */}
       <div style={{ marginBottom: '1.5rem', textAlign: 'center' }}>
-        {config?.branding?.logoUrl && (
-          <img src={config.branding.logoUrl} alt={config.branding.name} style={{ height: '40px', marginBottom: '0.75rem' }} />
+        {(logoUrl || config?.branding?.logoUrl) && (
+          <img src={logoUrl || config?.branding?.logoUrl} alt={config?.branding?.name || ''} style={{ height: '56px', marginBottom: '0.75rem', borderRadius: '0.625rem', display: 'block', margin: '0 auto 0.75rem' }} />
         )}
         <h2 style={{ margin: 0, fontSize: '1.375rem', fontWeight: 700, color: 'var(--k-text)' }}>
           Create your account
@@ -139,15 +139,18 @@ function KaappuBadge() {
           textDecoration: 'none',
           display: 'inline-flex',
           alignItems: 'center',
-          gap: '0.35rem',
+          gap: '0.4rem',
         }}
       >
-        <svg width="14" height="16" viewBox="0 0 20 22" fill="none" style={{ opacity: 0.8 }}>
-          <path d="M10 1L2 4.5V10c0 5.25 3.4 10.2 8 11.5 4.6-1.3 8-6.25 8-11.5V4.5L10 1z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round"/>
-          <rect x="7" y="9" width="6" height="5" rx="1" stroke="currentColor" strokeWidth="1.3"/>
-          <path d="M8.5 9V7a1.5 1.5 0 0 1 3 0v2" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
-        </svg>
-        Secured by <strong style={{ fontWeight: 600, color: 'var(--k-text)', opacity: 0.6 }}>Kaappu</strong>
+        Secured by
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.15rem' }}>
+          <svg width="14" height="16" viewBox="0 0 20 22" fill="none" style={{ opacity: 0.7 }}>
+            <path d="M10 1L2 4.5V10c0 5.25 3.4 10.2 8 11.5 4.6-1.3 8-6.25 8-11.5V4.5L10 1z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round"/>
+            <rect x="7" y="9" width="6" height="5" rx="1" stroke="currentColor" strokeWidth="1.3"/>
+            <path d="M8.5 9V7a1.5 1.5 0 0 1 3 0v2" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
+          </svg>
+          <strong style={{ fontWeight: 700, color: 'var(--k-text)', opacity: 0.5, fontFamily: 'Georgia, "Palatino Linotype", "Book Antiqua", serif', fontSize: '0.8125rem', letterSpacing: '0.03em' }}>Kaappu</strong>
+        </span>
       </a>
     </div>
   )
