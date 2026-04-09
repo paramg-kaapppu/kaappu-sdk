@@ -1,20 +1,27 @@
 {
   "name": "@kaappu/react",
   "version": "0.1.0",
-  "description": "Kaappu Identity — React components for authentication and authorization",
-  "keywords": ["kaappu", "auth", "identity", "react"],
+  "description": "Kaappu Identity \u2014 React components for authentication and authorization",
+  "keywords": [
+    "kaappu",
+    "auth",
+    "identity",
+    "react"
+  ],
   "license": "MIT",
-  "main": "./dist/index.cjs",
-  "module": "./dist/index.js",
+  "main": "./dist/index.js",
+  "module": "./dist/index.mjs",
   "types": "./dist/index.d.ts",
   "exports": {
     ".": {
-      "import": "./dist/index.js",
-      "require": "./dist/index.cjs",
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.js",
       "types": "./dist/index.d.ts"
     }
   },
-  "files": ["dist"],
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "build": "tsup",
     "dev": "tsup --watch",

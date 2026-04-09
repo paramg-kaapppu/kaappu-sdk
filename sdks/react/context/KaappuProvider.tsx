@@ -51,36 +51,12 @@ export function KaappuProvider({
 
   const refreshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  const [configLoaded, setConfigLoaded] = useState(false)
-  const [sessionReady, setSessionReady] = useState(false)
-
-  // Mark as loaded only when BOTH config and session are ready
+  // Fetch tenant config on mount
   useEffect(() => {
-    if (configLoaded && sessionReady) setIsLoaded(true)
-  }, [configLoaded, sessionReady])
-
-  // Fetch tenant config on mount — retry up to 3 times on failure
-  useEffect(() => {
-    let cancelled = false
-    async function loadConfig(attempt = 0) {
-      try {
-        const r = await fetch(`${baseUrl}/api/v1/accounts/config?pk=${publishableKey}`)
-        if (r.ok) {
-          const data = await r.json()
-          if (!cancelled && data?.data) setTenantConfig(data.data)
-          if (!cancelled) setConfigLoaded(true)
-          return
-        }
-      } catch {}
-      // Retry after 1s, 2s, 4s
-      if (!cancelled && attempt < 3) {
-        setTimeout(() => loadConfig(attempt + 1), 1000 * Math.pow(2, attempt))
-      } else if (!cancelled) {
-        setConfigLoaded(true) // give up, let UI render without OAuth buttons
-      }
-    }
-    loadConfig()
-    return () => { cancelled = true }
+    fetch(`${baseUrl}/api/v1/accounts/config?pk=${publishableKey}`)
+      .then(r => r.ok ? r.json() : null)
+      .then(data => { if (data?.data) setTenantConfig(data.data) })
+      .catch(() => {})
   }, [publishableKey, baseUrl])
 
   // Restore session from localStorage on mount (also sync OAuth cookie → localStorage)
@@ -108,7 +84,7 @@ export function KaappuProvider({
           setUser(userData)
           setIsSignedIn(true)
           scheduleRefresh(token)
-          setSessionReady(true)
+          setIsLoaded(true)
           return
         }
       }
@@ -126,10 +102,10 @@ export function KaappuProvider({
       scheduleRefresh(storedToken)
     } else if (storedToken && isTokenExpired(storedToken)) {
       // Attempt silent refresh
-      silentRefresh().finally(() => setSessionReady(true))
+      silentRefresh().finally(() => setIsLoaded(true))
       return
     }
-    setSessionReady(true)
+    setIsLoaded(true)
   }, [])
 
   function scheduleRefresh(token: string) {
