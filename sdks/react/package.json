@@ -1,14 +1,31 @@
 {
   "name": "@kaappu/react",
-  "version": "0.1.0",
-  "description": "Kaappu Identity \u2014 React components for authentication and authorization",
+  "version": "0.2.0",
+  "description": "Kaappu Identity — React components for authentication, authorization, and AI-aware access control. Drop-in <LoginPanel />, <RegisterPanel />, <Authorize />, and useKaappu() hook.",
   "keywords": [
     "kaappu",
     "auth",
+    "authentication",
+    "authorization",
     "identity",
-    "react"
+    "iam",
+    "rbac",
+    "react",
+    "oauth",
+    "sso",
+    "ai-security"
   ],
   "license": "MIT",
+  "homepage": "https://kaappu.org",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/paramg-kaapppu/kaappu-sdk.git",
+    "directory": "sdks/react"
+  },
+  "bugs": {
+    "url": "https://github.com/paramg-kaapppu/kaappu-sdk/issues"
+  },
+  "author": "Kaappu",
   "main": "./dist/index.js",
   "module": "./dist/index.mjs",
   "types": "./dist/index.d.ts",
@@ -20,21 +37,26 @@
     }
   },
   "files": [
-    "dist"
+    "dist",
+    "README.md",
+    "LICENSE"
   ],
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  },
   "scripts": {
     "build": "tsup",
     "dev": "tsup --watch",
-    "typecheck": "tsc --noEmit"
-  },
-  "dependencies": {
-    "@kaappu/core": "file:../core"
+    "typecheck": "tsc --noEmit",
+    "prepublishOnly": "npm run typecheck && npm run build"
   },
   "peerDependencies": {
     "react": ">=18.0.0",
     "react-dom": ">=18.0.0"
   },
   "devDependencies": {
+    "@kaappu/core": "file:../core",
     "@types/react": "^18.2.0",
     "@types/react-dom": "^18.2.0",
     "react": "^18.2.0",
