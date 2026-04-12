@@ -134,8 +134,12 @@ export function RegisterPanel({
     if (oauthProxyUrl) {
       window.location.href = `${oauthProxyUrl}/${provider}`
     } else {
-      const redirect = redirectUrl ?? window.location.href
-      window.location.href = `${baseUrl}/oauth/${provider}?redirect=${encodeURIComponent(redirect)}`
+      const returnTo = redirectUrl ?? (window.location.origin + '/oauth-callback')
+      const params = new URLSearchParams({
+        return_url: returnTo,
+        accountId,
+      })
+      window.location.href = `${baseUrl}/oauth/${provider}?${params.toString()}`
     }
   }
 

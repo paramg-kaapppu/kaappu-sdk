@@ -3,7 +3,7 @@
 import React, { useContext, useState } from 'react'
 import { KaappuContext } from '../context/KaappuContext'
 import type { KaappuUser, LoginPanelProps } from '../types'
-import { buildThemeVars } from '../theme'
+import { buildThemeVars, resolveColorScheme } from '../theme'
 
 type Tab = 'password' | 'magic' | 'otp' | 'phone'
 
@@ -33,6 +33,8 @@ export function LoginPanel({
   logoUrl,
   appearance,
   className,
+  oauthProxyUrl,
+  allowedProviders,
   // New props for standalone usage (without KaappuProvider)
   authUrl: authUrlProp,
   accountId: accountIdProp,
@@ -49,7 +51,15 @@ export function LoginPanel({
   // Try KaappuProvider context first, fall back to standalone props
   const ctx = useContext(KaappuContext) as any
   const config = ctx?.tenantConfig
-  const baseUrl: string = authUrlProp ?? ctx?._baseUrl ?? '/api/auth'
+  // authUrlProp = explicit proxy URL (e.g., /api/auth for Next.js proxy)
+  // ctx._baseUrl = IDM root URL (e.g., http://server/igai)
+  // If using IDM directly (no proxy), append the full API path
+  const rawBase: string = authUrlProp ?? ctx?._baseUrl ?? '/api/auth'
+  const baseUrl: string = rawBase.includes('/api/auth') || rawBase.includes('/idm/auth')
+    ? rawBase
+    : rawBase.endsWith('/igai') || rawBase.includes(':9091')
+      ? `${rawBase}/api/v1/idm/auth`
+      : rawBase
   const accountId = accountIdProp ?? config?.accountId ?? 'default'
 
   const [tab, setTab] = useState<Tab>('password')
@@ -136,56 +146,101 @@ export function LoginPanel({
   }
 
   function handleOAuth(provider: string) {
-    const redirect = redirectUrl ?? window.location.href
-    window.location.href = `${baseUrl}/oauth/${provider}?redirect=${encodeURIComponent(redirect)}`
+    if (oauthProxyUrl) {
+      // Use external proxy (e.g., WordPress plugin handles the OAuth flow)
+      window.location.href = `${oauthProxyUrl}/${provider}`
+    } else {
+      // Build the OAuth initiation URL with return_url (for cross-domain SPA
+      // redirects) and accountId (so the backend registers the user in the
+      // right tenant).
+      const returnTo = redirectUrl ?? (window.location.origin + '/oauth-callback')
+      const params = new URLSearchParams({
+        return_url: returnTo,
+        accountId,
+      })
+      window.location.href = `${baseUrl}/oauth/${provider}?${params.toString()}`
+    }
   }
 
   // ── Theme ─────────────────────────────────────────────────────────────────
   const resolvedLogo = logoUrl ?? config?.branding?.logoUrl ?? '/kaappu-logo.png'
   const cssVars = buildThemeVars(appearance, config?.branding?.primaryColor)
 
+  const isDark = resolveColorScheme(appearance?.colorScheme) === 'dark'
+
   return (
     <div
       style={{
         ...cssVars,
-        background: '#030712',
-        minHeight: '100vh',
+        background: isDark ? '#030712' : 'var(--k-bg, #f5f5fa)',
+        minHeight: isDark ? '100vh' : undefined,
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
         position: 'relative',
         overflow: 'hidden',
+        padding: isDark ? undefined : '1rem 0',
       }}
       className={className}
     >
-      {/* Background effects */}
-      <div style={{ position: 'absolute', inset: 0, background: 'radial-gradient(circle at 20% 30%, rgba(99,102,241,0.12) 0%, transparent 60%), radial-gradient(circle at 80% 70%, rgba(139,92,246,0.08) 0%, transparent 60%)', zIndex: 0 }} />
-      <div style={{ position: 'absolute', inset: 0, backgroundImage: 'linear-gradient(rgba(255,255,255,0.02) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.02) 1px, transparent 1px)', backgroundSize: '40px 40px', zIndex: 1 }} />
+      {/* Background effects (dark mode only) */}
+      {isDark && <div style={{ position: 'absolute', inset: 0, background: 'radial-gradient(circle at 20% 30%, rgba(99,102,241,0.12) 0%, transparent 60%), radial-gradient(circle at 80% 70%, rgba(139,92,246,0.08) 0%, transparent 60%)', zIndex: 0 }} />}
+      {isDark && <div style={{ position: 'absolute', inset: 0, backgroundImage: 'linear-gradient(rgba(255,255,255,0.02) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.02) 1px, transparent 1px)', backgroundSize: '40px 40px', zIndex: 1 }} />}
 
       <div style={CARD}>
         {/* Brand */}
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: 32 }}>
-          <img src={resolvedLogo} alt="Logo" style={{ height: 120, marginBottom: 4, filter: 'drop-shadow(0 0 20px rgba(99,102,241,0.3))' }} />
-          <p style={{ color: '#8b949e', fontSize: 13, marginTop: 12, textAlign: 'center' }}>
+          <img src={resolvedLogo} alt="Logo" style={{ height: isDark ? 120 : 52, marginBottom: 4, filter: isDark ? 'drop-shadow(0 0 20px rgba(99,102,241,0.3))' : 'none' }} />
+          <p style={{ color: 'var(--k-muted, #8b949e)', fontSize: 13, marginTop: 12, textAlign: 'center' }}>
             Welcome back! Please sign in to continue.
           </p>
         </div>
 
         {/* OAuth buttons */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10, marginBottom: 12 }}>
-          {[
-            { id: 'google', icon: <GoogleIcon /> },
-            { id: 'github', icon: <GithubIcon /> },
-            { id: 'microsoft', icon: <MicrosoftIcon /> },
-            { id: 'apple', icon: <AppleIcon /> },
-          ].map(p => (
+        {(() => {
+          const allProviders = [
+            { id: 'google', label: 'Google', icon: <GoogleIcon /> },
+            { id: 'github', label: 'GitHub', icon: <GithubIcon /> },
+            { id: 'microsoft', label: 'Microsoft', icon: <MicrosoftIcon /> },
+            { id: 'apple', label: 'Apple', icon: <AppleIcon /> },
+          ]
+          const visible = allProviders.filter(p => {
+            // If allowedProviders is set, only show those
+            if (allowedProviders && allowedProviders.length > 0) return allowedProviders.includes(p.id)
+            // Otherwise, check tenant config
+            return config?.authMethods?.[p.id as keyof typeof config.authMethods] !== false
+          })
+          if (visible.length === 0) return null
+
+          // Single provider: show full-width "Continue with X" button
+          if (visible.length === 1) {
+            const p = visible[0]
+            return (
+              <button onClick={() => handleOAuth(p.id)} style={{
+                ...OAUTH_BTN, display: 'flex', gap: 10, padding: '12px 16px',
+                width: '100%', marginBottom: 12, fontSize: 14, fontWeight: 500,
+              }}
+                onMouseEnter={e => (e.currentTarget.style.background = 'var(--k-hover, rgba(255,255,255,0.08))')}
+                onMouseLeave={e => (e.currentTarget.style.background = 'var(--k-hover, rgba(255,255,255,0.04))')}>
+                {p.icon} <span>Continue with {p.label}</span>
+              </button>
+            )
+          }
+
+          // Multiple providers: show icon grid
+          const cols = Math.min(visible.length, 4)
+          return (
+        <div style={{ display: 'grid', gridTemplateColumns: `repeat(${cols}, 1fr)`, gap: 10, marginBottom: 12 }}>
+          {visible.map(p => (
             <button key={p.id} onClick={() => handleOAuth(p.id)} style={OAUTH_BTN}
-              onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.08)')}
-              onMouseLeave={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.04)')}>
+              onMouseEnter={e => (e.currentTarget.style.background = 'var(--k-hover, rgba(255,255,255,0.08))')}
+              onMouseLeave={e => (e.currentTarget.style.background = 'var(--k-hover, rgba(255,255,255,0.04))')}>
               {p.icon}
             </button>
           ))}
         </div>
+          )
+        })()}
 
         {/* Passkey */}
         <button style={PASSKEY_BTN}
@@ -195,14 +250,14 @@ export function LoginPanel({
         </button>
 
         {/* Divider */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 24, color: '#484f58', fontSize: 11, fontWeight: 700, textTransform: 'uppercase' as const, letterSpacing: '0.1em' }}>
-          <div style={{ flex: 1, height: 1, background: 'rgba(255,255,255,0.06)' }} />
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 24, color: 'var(--k-muted, #484f58)', fontSize: 11, fontWeight: 700, textTransform: 'uppercase' as const, letterSpacing: '0.1em' }}>
+          <div style={{ flex: 1, height: 1, background: 'var(--k-border, rgba(255,255,255,0.06))' }} />
           or use email
-          <div style={{ flex: 1, height: 1, background: 'rgba(255,255,255,0.06)' }} />
+          <div style={{ flex: 1, height: 1, background: 'var(--k-border, rgba(255,255,255,0.06))' }} />
         </div>
 
         {/* Tabs */}
-        <div style={{ display: 'flex', background: 'rgba(255,255,255,0.04)', borderRadius: 10, padding: 3, marginBottom: 24 }}>
+        <div style={{ display: 'flex', background: 'var(--k-hover, rgba(255,255,255,0.04))', borderRadius: 10, padding: 3, marginBottom: 24 }}>
           {([
             { key: 'password' as Tab, label: '\uD83D\uDD11 Password' },
             { key: 'magic' as Tab, label: '\u2728 Magic Link' },
@@ -243,7 +298,7 @@ export function LoginPanel({
             <div style={{ marginBottom: 16 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6, marginLeft: 4 }}>
                 <label style={{ ...LABEL, marginBottom: 0 }}>Access Key</label>
-                <span style={{ fontSize: 11, color: '#818cf8', fontWeight: 700, cursor: 'pointer' }}>Recover</span>
+                <span style={{ fontSize: 11, color: 'var(--k-primary, #818cf8)', fontWeight: 700, cursor: 'pointer' }}>Recover</span>
               </div>
               <div style={INPUT_ROW}>
                 <div style={ICON_BOX}><LockIcon /></div>
@@ -251,7 +306,7 @@ export function LoginPanel({
                   onChange={e => setPassword(e.target.value)} placeholder="••••••••" required
                   style={{ ...INPUT, paddingRight: 0 }} />
                 <button type="button" onClick={() => setShowPassword(!showPassword)}
-                  style={{ width: 48, height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'none', border: 'none', cursor: 'pointer', color: '#484f58' }}>
+                  style={{ width: 48, height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--k-muted, #484f58)' }}>
                   {showPassword ? <EyeOffIcon /> : <EyeIcon />}
                 </button>
               </div>
@@ -278,16 +333,16 @@ export function LoginPanel({
         </form>
 
         {/* Sign up link */}
-        <p style={{ textAlign: 'center', fontSize: 14, color: '#8b949e', marginTop: 28 }}>
+        <p style={{ textAlign: 'center', fontSize: 14, color: 'var(--k-muted, #8b949e)', marginTop: 28 }}>
           {signUpPrompt}{' '}
-          <a href={signUpPath} style={{ color: '#818cf8', textDecoration: 'none', fontWeight: 700 }}>{signUpLabel}</a>
+          <a href={signUpPath} style={{ color: 'var(--k-primary, #818cf8)', textDecoration: 'none', fontWeight: 700 }}>{signUpLabel}</a>
         </p>
 
         {/* Protected by Kaappu */}
-        <div style={{ marginTop: 32, borderTop: '1px solid rgba(255,255,255,0.06)', paddingTop: 20, textAlign: 'center' }}>
+        <div style={{ marginTop: 32, borderTop: '1px solid var(--k-border, rgba(255,255,255,0.06))', paddingTop: 20, textAlign: 'center' }}>
           <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, opacity: 0.4 }}>
             <ShieldIcon />
-            <span style={{ fontSize: 10, fontWeight: 800, textTransform: 'uppercase' as const, letterSpacing: '0.3em', color: '#8b949e' }}>Protected by Kaappu</span>
+            <span style={{ fontSize: 10, fontWeight: 800, textTransform: 'uppercase' as const, letterSpacing: '0.3em', color: 'var(--k-muted, #8b949e)' }}>Protected by Kaappu</span>
           </div>
         </div>
       </div>
@@ -299,37 +354,37 @@ export function LoginPanel({
 
 const CARD: React.CSSProperties = {
   width: '100%', maxWidth: 420,
-  background: 'rgba(13, 17, 23, 0.9)',
-  border: '1px solid rgba(255,255,255,0.1)',
+  background: 'var(--k-card-bg, rgba(13, 17, 23, 0.9))',
+  border: '1px solid var(--k-border, rgba(255,255,255,0.1))',
   borderRadius: 24, padding: 40,
   position: 'relative', zIndex: 10,
   backdropFilter: 'blur(20px)',
-  boxShadow: '0 25px 80px rgba(0,0,0,0.5)',
+  boxShadow: 'var(--k-shadow, 0 25px 80px rgba(0,0,0,0.5))',
 }
 
 const INPUT_ROW: React.CSSProperties = {
   display: 'flex', alignItems: 'center',
-  background: 'rgba(255,255,255,0.03)',
-  border: '1px solid rgba(255,255,255,0.08)',
+  background: 'var(--k-hover, rgba(255,255,255,0.03))',
+  border: '1px solid var(--k-border, rgba(255,255,255,0.08))',
   borderRadius: 12, height: 52, overflow: 'hidden',
 }
 
 const INPUT: React.CSSProperties = {
   flex: 1, background: 'transparent', border: 'none', outline: 'none',
-  color: '#f0f6fc', fontSize: 15, paddingRight: 16,
+  color: 'var(--k-text, #f0f6fc)', fontSize: 15, paddingRight: 16,
 }
 
 const ICON_BOX: React.CSSProperties = {
-  width: 48, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#484f58',
+  width: 48, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--k-muted, #484f58)',
 }
 
 const LABEL: React.CSSProperties = {
-  display: 'block', fontSize: 11, fontWeight: 800, color: '#484f58',
+  display: 'block', fontSize: 11, fontWeight: 800, color: 'var(--k-muted, #484f58)',
   textTransform: 'uppercase' as const, letterSpacing: '0.1em', marginBottom: 6, marginLeft: 4,
 }
 
 const HINT: React.CSSProperties = {
-  fontSize: 12, color: '#8b949e', marginBottom: 12, marginLeft: 4,
+  fontSize: 12, color: 'var(--k-muted, #8b949e)', marginBottom: 12, marginLeft: 4,
 }
 
 const PRIMARY_BTN: React.CSSProperties = {
@@ -343,15 +398,15 @@ const PRIMARY_BTN: React.CSSProperties = {
 
 const OAUTH_BTN: React.CSSProperties = {
   padding: 10, display: 'flex', alignItems: 'center', justifyContent: 'center',
-  background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)',
-  borderRadius: 12, cursor: 'pointer', color: '#f0f6fc',
+  background: 'var(--k-hover, rgba(255,255,255,0.04))', border: '1px solid var(--k-border, rgba(255,255,255,0.08))',
+  borderRadius: 12, cursor: 'pointer', color: 'var(--k-text, #f0f6fc)',
 }
 
 const PASSKEY_BTN: React.CSSProperties = {
   width: '100%', marginBottom: 12, padding: '10px 16px',
   display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
   background: 'rgba(99,102,241,0.08)', border: '1px solid rgba(99,102,241,0.2)',
-  borderRadius: 12, cursor: 'pointer', color: '#818cf8', fontSize: 13, fontWeight: 600,
+  borderRadius: 12, cursor: 'pointer', color: 'var(--k-primary, #818cf8)', fontSize: 13, fontWeight: 600,
 }
 
 const ERROR_BANNER: React.CSSProperties = {
