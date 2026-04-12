@@ -7,7 +7,7 @@ name = "kaappu-sdk"
 version = "0.1.0"
 description = "JWT authentication and permission-based authorization for Python services"
 readme = "README.md"
-license = {text = "MIT"}
+license = "MIT"
 requires-python = ">=3.9"
 dependencies = [
     "PyJWT[crypto]>=2.8.0",

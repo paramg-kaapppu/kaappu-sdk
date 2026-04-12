@@ -1,38 +1,67 @@
 {
   "name": "@kaappu/next",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Kaappu Identity — Next.js edge pipeline, server-side helpers, and route guards",
-  "keywords": ["kaappu", "auth", "nextjs", "middleware"],
+  "keywords": [
+    "kaappu",
+    "auth",
+    "authentication",
+    "authorization",
+    "identity",
+    "nextjs",
+    "middleware",
+    "edge",
+    "jwt"
+  ],
   "license": "MIT",
+  "homepage": "https://kaappu.org",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/paramg-kaapppu/kaappu-sdk.git",
+    "directory": "sdks/next"
+  },
+  "bugs": {
+    "url": "https://github.com/paramg-kaapppu/kaappu-sdk/issues"
+  },
+  "author": "Kaappu",
   "main": "./dist/index.cjs",
   "module": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "exports": {
     ".": {
+      "types": "./dist/index.d.ts",
       "import": "./dist/index.js",
-      "require": "./dist/index.cjs",
-      "types": "./dist/index.d.ts"
+      "require": "./dist/index.cjs"
     },
     "./server": {
+      "types": "./dist/server.d.ts",
       "import": "./dist/server.js",
-      "require": "./dist/server.cjs",
-      "types": "./dist/server.d.ts"
+      "require": "./dist/server.cjs"
     }
   },
-  "files": ["dist"],
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  },
   "scripts": {
     "build": "tsup",
     "dev": "tsup --watch",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "prepublishOnly": "npm run typecheck && npm run build"
   },
   "dependencies": {
-    "@kaappu/core": "file:../core",
     "jose": "^5.2.0"
   },
   "peerDependencies": {
     "next": ">=14.0.0"
   },
   "devDependencies": {
+    "@kaappu/core": "file:../core",
     "@types/node": "^20.0.0",
     "next": "^14.2.0",
     "tsup": "^8.0.0",

@@ -9,6 +9,7 @@ export default defineConfig([
     sourcemap: true,
     clean: true,
     external: ['next', 'jose'],
+    noExternal: ['@kaappu/core'],
     treeshake: true,
   },
   // Server entry (authorize, currentAuthorizedUser)
@@ -18,6 +19,7 @@ export default defineConfig([
     dts: true,
     sourcemap: true,
     external: ['next', 'jose', 'react'],
+    noExternal: ['@kaappu/core'],
     treeshake: true,
   },
 ])
