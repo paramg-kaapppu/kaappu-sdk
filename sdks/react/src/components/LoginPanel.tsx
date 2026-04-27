@@ -1,6 +1,7 @@
 'use client'
 
-import React, { useContext, useState } from 'react'
+import React, { useContext, useState, useCallback } from 'react'
+import { base64urlToBuffer, bufferToBase64url, isWebAuthnSupported } from '@kaappu/core'
 import { KaappuContext } from '../context/KaappuContext'
 import type { KaappuUser, LoginPanelProps } from '../types'
 import { buildThemeVars, resolveColorScheme } from '../theme'
@@ -243,11 +244,69 @@ export function LoginPanel({
         })()}
 
         {/* Passkey */}
+        {isWebAuthnSupported() && (
         <button style={PASSKEY_BTN}
+          disabled={loading}
+          onClick={async () => {
+            setError(null)
+            setLoading(true)
+            try {
+              const beginRes = await fetch(`${baseUrl}/passkey/authenticate/begin`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ ...(email ? { email } : {}), accountId }),
+              })
+              const beginData = await beginRes.json()
+              if (!beginRes.ok) throw new Error(beginData.error || 'Failed to start passkey authentication')
+              const d = beginData.data || beginData
+              const challengeId = d.challengeId
+              const options = d.options || d
+
+              const publicKeyOptions: PublicKeyCredentialRequestOptions = {
+                ...options,
+                challenge: base64urlToBuffer(options.challenge),
+                allowCredentials: options.allowCredentials?.map((c: any) => ({
+                  ...c, id: base64urlToBuffer(c.id),
+                })),
+              }
+
+              const credential = await navigator.credentials.get({ publicKey: publicKeyOptions }) as PublicKeyCredential | null
+              if (!credential) throw new Error('Passkey authentication cancelled')
+
+              const assertion = credential.response as AuthenticatorAssertionResponse
+              const completeRes = await fetch(`${baseUrl}/passkey/authenticate/complete`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  challengeId,
+                  credentialId: credential.id,
+                  authenticatorData: bufferToBase64url(assertion.authenticatorData),
+                  clientDataJSON: bufferToBase64url(assertion.clientDataJSON),
+                  signature: bufferToBase64url(assertion.signature),
+                  userHandle: assertion.userHandle ? bufferToBase64url(assertion.userHandle) : null,
+                  accountId,
+                }),
+              })
+              const completeData = await completeRes.json()
+              if (!completeRes.ok) throw new Error(completeData.error || 'Passkey authentication failed')
+
+              const result = completeData.data || completeData
+              if (ctx?._onAuthSuccess) {
+                ctx._onAuthSuccess(result.accessToken, result.refreshToken, result.user)
+              }
+              onSuccess?.(result.accessToken, result.user)
+              if (redirectUrl) window.location.href = redirectUrl
+            } catch (err: any) {
+              setError(err.message || 'Passkey authentication failed')
+            } finally {
+              setLoading(false)
+            }
+          }}
           onMouseEnter={e => (e.currentTarget.style.background = 'rgba(99,102,241,0.15)')}
           onMouseLeave={e => (e.currentTarget.style.background = 'rgba(99,102,241,0.08)')}>
-          <FingerprintIcon /> Sign in with Passkey
+          <FingerprintIcon /> {loading ? 'Authenticating...' : 'Sign in with Passkey'}
         </button>
+        )}
 
         {/* Divider */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 24, color: 'var(--k-muted, #484f58)', fontSize: 11, fontWeight: 700, textTransform: 'uppercase' as const, letterSpacing: '0.1em' }}>

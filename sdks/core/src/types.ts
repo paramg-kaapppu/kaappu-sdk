@@ -72,3 +72,48 @@ export interface AuthResponse {
   mfaRequired?: boolean
   challengeId?: string
 }
+
+/** Registered passkey credential */
+export interface PasskeyCredential {
+  id: string
+  credentialId: string
+  name: string
+  createdAt: string
+  aaguid?: string
+}
+
+/** Passkey registration begin response */
+export interface PasskeyRegisterBeginResponse {
+  challengeId: string
+  options: PublicKeyCredentialCreationOptionsJSON
+}
+
+/** Passkey authentication begin response */
+export interface PasskeyAuthenticateBeginResponse {
+  challengeId: string
+  options: PublicKeyCredentialRequestOptionsJSON
+}
+
+interface PublicKeyCredentialCreationOptionsJSON {
+  challenge: string
+  rp: { id: string; name: string }
+  user: { id: string; name: string; displayName: string }
+  pubKeyCredParams: Array<{ type: string; alg: number }>
+  timeout?: number
+  attestation?: string
+  authenticatorSelection?: {
+    authenticatorAttachment?: string
+    residentKey?: string
+    requireResidentKey?: boolean
+    userVerification?: string
+  }
+  excludeCredentials?: Array<{ type: string; id: string }>
+}
+
+interface PublicKeyCredentialRequestOptionsJSON {
+  challenge: string
+  timeout?: number
+  rpId?: string
+  userVerification?: string
+  allowCredentials?: Array<{ type: string; id: string }>
+}

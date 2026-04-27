@@ -123,4 +123,83 @@ export class KaappuApiClient {
     const data = await res.json()
     return data?.data?.url || data?.url || ''
   }
+
+  // ── Passkey / WebAuthn ────────────────────────────────────────────────────
+
+  /** Begin passkey registration (requires auth) */
+  async passkeyRegisterBegin(accessToken: string, accountId?: string) {
+    const res = await fetch(`${this.baseUrl}/api/v1/idm/auth/passkey/register/begin`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
+      body: JSON.stringify({ accountId: accountId || 'default' }),
+    })
+    const data = await res.json()
+    if (!data.success && !data.data) throw new Error(data.error || 'Passkey registration failed')
+    return data.data as { challengeId: string; options: any }
+  }
+
+  /** Complete passkey registration (requires auth) */
+  async passkeyRegisterComplete(accessToken: string, body: {
+    challengeId: string; credentialId: string;
+    attestationObject: string; clientDataJSON: string;
+  }) {
+    const res = await fetch(`${this.baseUrl}/api/v1/idm/auth/passkey/register/complete`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
+      body: JSON.stringify(body),
+    })
+    const data = await res.json()
+    if (!data.success && !data.data) throw new Error(data.error || 'Passkey registration failed')
+    return data.data
+  }
+
+  /** Begin passkey authentication (no auth required) */
+  async passkeyAuthenticateBegin(email?: string, accountId?: string) {
+    const res = await fetch(`${this.baseUrl}/api/v1/idm/auth/passkey/authenticate/begin`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ...(email ? { email } : {}), accountId: accountId || 'default' }),
+    })
+    const data = await res.json()
+    if (!data.success && !data.data) throw new Error(data.error || 'Passkey authentication failed')
+    const d = data.data
+    return {
+      challengeId: d.challengeId || d.options?.challengeId,
+      options: d.options || d,
+    }
+  }
+
+  /** Complete passkey authentication (no auth required) — returns tokens */
+  async passkeyAuthenticateComplete(body: {
+    challengeId: string; credentialId: string;
+    authenticatorData: string; clientDataJSON: string;
+    signature: string; userHandle?: string | null; accountId?: string;
+  }): Promise<AuthResponse> {
+    const res = await fetch(`${this.baseUrl}/api/v1/idm/auth/passkey/authenticate/complete`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    })
+    const data = await res.json()
+    if (!data.success && !data.data) throw new Error(data.error || 'Passkey authentication failed')
+    return data.data
+  }
+
+  /** List registered passkeys (requires auth) */
+  async passkeyListCredentials(accessToken: string, accountId?: string) {
+    const res = await fetch(
+      `${this.baseUrl}/api/v1/idm/auth/passkey/credentials?accountId=${accountId || 'default'}`,
+      { headers: { Authorization: `Bearer ${accessToken}` } },
+    )
+    const data = await res.json()
+    return (data.data || []) as Array<{ id: string; credentialId: string; name: string; createdAt: string }>
+  }
+
+  /** Delete a passkey (requires auth) */
+  async passkeyDeleteCredential(accessToken: string, credentialId: string) {
+    await fetch(`${this.baseUrl}/api/v1/idm/auth/passkey/credentials/${credentialId}`, {
+      method: 'DELETE',
+      headers: { Authorization: `Bearer ${accessToken}` },
+    })
+  }
 }

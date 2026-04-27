@@ -115,13 +115,13 @@ function ProfileTab({ user, baseUrl, accountId, getToken }: any) {
     setSaving(true)
     try {
       const token = await getToken()
-      const res = await fetch(`${baseUrl}/api/v1/idm/users/${user.id}`, {
+      const res = await fetch(`${baseUrl}/api/v1/idm/users/me`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
-        body: JSON.stringify({ firstName, lastName, accountId }),
+        body: JSON.stringify({ firstName, lastName }),
       })
       if (!res.ok) {
         const d = await res.json().catch(() => ({}))
@@ -454,6 +454,8 @@ function PasskeysTab({ baseUrl, accountId, getToken }: any) {
   const [passkeys, setPasskeys] = useState<Passkey[]>([])
   const [loading, setLoading]   = useState(true)
   const [deleting, setDeleting] = useState<string | null>(null)
+  const [registering, setRegistering] = useState(false)
+  const [regStatus, setRegStatus] = useState<string | null>(null)
 
   const loadPasskeys = useCallback(async () => {
     setLoading(true)
@@ -487,6 +489,59 @@ function PasskeysTab({ baseUrl, accountId, getToken }: any) {
     }
   }
 
+  async function handleRegister() {
+    setRegistering(true)
+    setRegStatus(null)
+    try {
+      const { base64urlToBuffer, bufferToBase64url, isWebAuthnSupported } = await import('@kaappu/core')
+      if (!isWebAuthnSupported()) throw new Error('WebAuthn is not supported in this browser')
+
+      const token = await getToken()
+      const beginRes = await fetch(`${baseUrl}/api/v1/idm/auth/passkey/register/begin`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+        body: JSON.stringify({ accountId }),
+      })
+      const beginData = await beginRes.json()
+      if (!beginRes.ok) throw new Error(beginData.error || 'Registration failed')
+
+      const d = beginData.data || beginData
+      const challengeId = d.challengeId
+      const options = d.options || d
+
+      const pubKeyOptions: PublicKeyCredentialCreationOptions = {
+        ...options,
+        challenge: base64urlToBuffer(options.challenge),
+        user: { ...options.user, id: base64urlToBuffer(options.user.id) },
+        excludeCredentials: options.excludeCredentials?.map((c: any) => ({ ...c, id: base64urlToBuffer(c.id) })),
+      }
+
+      const credential = await navigator.credentials.create({ publicKey: pubKeyOptions }) as PublicKeyCredential | null
+      if (!credential) throw new Error('Registration cancelled')
+
+      const attestation = credential.response as AuthenticatorAttestationResponse
+      const completeRes = await fetch(`${baseUrl}/api/v1/idm/auth/passkey/register/complete`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+        body: JSON.stringify({
+          challengeId,
+          credentialId: credential.id,
+          attestationObject: bufferToBase64url(attestation.attestationObject),
+          clientDataJSON: bufferToBase64url(attestation.clientDataJSON),
+        }),
+      })
+      const completeData = await completeRes.json()
+      if (!completeRes.ok) throw new Error(completeData.error || 'Registration failed')
+
+      setRegStatus('Passkey registered successfully!')
+      loadPasskeys()
+    } catch (err: any) {
+      setRegStatus(err.message || 'Registration failed')
+    } finally {
+      setRegistering(false)
+    }
+  }
+
   if (loading) return <Skeleton rows={2} />
 
   return (
@@ -498,6 +553,34 @@ function PasskeysTab({ baseUrl, accountId, getToken }: any) {
 
       {passkeys.length === 0 && (
         <p style={{ fontSize: '0.875rem', color: 'var(--k-muted)' }}>No passkeys registered.</p>
+      )}
+
+      <button
+        onClick={handleRegister}
+        disabled={registering}
+        style={{
+          display: 'flex', alignItems: 'center', gap: '0.5rem',
+          padding: '0.625rem 1rem', marginBottom: '1rem',
+          background: 'var(--k-primary, #6366f1)', color: 'var(--k-primary-fg, #fff)',
+          border: 'none', borderRadius: 'calc(var(--k-radius) * 0.6)',
+          fontSize: '0.875rem', fontWeight: 500, cursor: 'pointer',
+          fontFamily: 'var(--k-font)', opacity: registering ? 0.7 : 1,
+        }}
+      >
+        <span style={{ fontSize: '1.1rem' }}>🔑</span>
+        {registering ? 'Registering…' : 'Add passkey'}
+      </button>
+
+      {regStatus && (
+        <p style={{
+          fontSize: '0.8125rem', marginBottom: '1rem', padding: '0.5rem 0.75rem',
+          borderRadius: 'calc(var(--k-radius) * 0.4)',
+          background: regStatus.includes('success') ? 'rgba(52,211,153,0.1)' : 'rgba(239,68,68,0.1)',
+          color: regStatus.includes('success') ? '#34d399' : '#ef4444',
+          border: `1px solid ${regStatus.includes('success') ? 'rgba(52,211,153,0.25)' : 'rgba(239,68,68,0.25)'}`,
+        }}>
+          {regStatus}
+        </p>
       )}
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: '0.625rem' }}>
