@@ -1,6 +1,6 @@
 // Context + hooks
 export { KaappuProvider } from './context/KaappuProvider'
-export { useKaappu } from './context/KaappuContext'
+export { useKaappu, KaappuContext } from './context/KaappuContext'
 
 // Auth components
 export { LoginPanel } from './components/LoginPanel'
