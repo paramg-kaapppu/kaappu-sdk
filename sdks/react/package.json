@@ -1,6 +1,6 @@
 {
   "name": "@kaappu/react",
-  "version": "0.2.2",
+  "version": "0.2.3",
   "description": "Kaappu Identity — React components for authentication, authorization, and AI-aware access control. Drop-in <LoginPanel />, <RegisterPanel />, <Authorize />, and useKaappu() hook.",
   "keywords": [
     "kaappu",
