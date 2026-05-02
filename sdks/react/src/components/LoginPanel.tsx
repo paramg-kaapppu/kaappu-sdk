@@ -251,7 +251,7 @@ export function LoginPanel({
             setError(null)
             setLoading(true)
             try {
-              const beginRes = await fetch(`${baseUrl}/passkey/authenticate/begin`, {
+              const beginRes = await fetch(`${baseUrl}/passkey/authenticate-begin`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ ...(email ? { email } : {}), accountId }),
@@ -274,7 +274,7 @@ export function LoginPanel({
               if (!credential) throw new Error('Passkey authentication cancelled')
 
               const assertion = credential.response as AuthenticatorAssertionResponse
-              const completeRes = await fetch(`${baseUrl}/passkey/authenticate/complete`, {
+              const completeRes = await fetch(`${baseUrl}/passkey/authenticate-complete`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -412,10 +412,10 @@ export function LoginPanel({
 // ── Styles ──────────────────────────────────────────────────────────────────
 
 const CARD: React.CSSProperties = {
-  width: '100%', maxWidth: 420,
+  width: '92%', maxWidth: 450, margin: '0 auto',
   background: 'var(--k-card-bg, rgba(13, 17, 23, 0.9))',
   border: '1px solid var(--k-border, rgba(255,255,255,0.1))',
-  borderRadius: 24, padding: 40,
+  borderRadius: 24, padding: '40px 44px',
   position: 'relative', zIndex: 10,
   backdropFilter: 'blur(20px)',
   boxShadow: 'var(--k-shadow, 0 25px 80px rgba(0,0,0,0.5))',

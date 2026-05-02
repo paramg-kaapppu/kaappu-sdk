@@ -51,13 +51,15 @@ export function KaappuProvider({
 
   const refreshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  const [configLoaded, setConfigLoaded] = useState(false)
+  const [, setConfigLoaded] = useState(false)
   const [sessionReady, setSessionReady] = useState(false)
 
-  // Mark as loaded only when BOTH config and session are ready
+  // Auth UI gates on session readiness only. Tenant config (OAuth buttons,
+  // branding) loads in the background and components read `tenantConfig`
+  // directly — a slow/failing config fetch must not block the Sign In button.
   useEffect(() => {
-    if (configLoaded && sessionReady) setIsLoaded(true)
-  }, [configLoaded, sessionReady])
+    if (sessionReady) setIsLoaded(true)
+  }, [sessionReady])
 
   // Fetch tenant config on mount — retry up to 3 times on failure
   useEffect(() => {

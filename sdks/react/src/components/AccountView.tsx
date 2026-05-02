@@ -54,7 +54,16 @@ export function AccountView({ appearance, className }: AccountViewProps) {
   if (!ctx) throw new Error('[Kaappu] <AccountView> must be inside <KaappuProvider>')
 
   const { user, isLoaded, isSignedIn, tenantConfig, getToken } = ctx
-  const baseUrl: string = ctx._baseUrl ?? 'http://localhost:9091'
+  const rawBase: string = ctx._baseUrl ?? 'http://localhost:9091'
+  // Detect proxy mode: baseUrl like /api/auth or https://host/api/auth
+  // In proxy mode, use short paths (e.g., /passkey/credentials)
+  // In direct mode (http://host:9091), use full IDM paths (e.g., /api/v1/idm/auth/passkey/credentials)
+  const isProxy = rawBase.includes('/api/auth') || rawBase.includes('/idm/auth')
+  const authBase: string = isProxy ? rawBase.replace(/\/$/, '') : `${rawBase}/api/v1/idm/auth`
+  const usersBase: string = isProxy ? rawBase.replace(/\/api\/auth\/?$/, '/api/users').replace(/\/idm\/auth\/?$/, '/api/users') : `${rawBase}/api/v1/idm/users`
+  const sessionsBase: string = isProxy ? rawBase.replace(/\/api\/auth\/?$/, '/api/sessions').replace(/\/idm\/auth\/?$/, '/api/sessions') : `${rawBase}/api/v1/idm/sessions`
+  // Proxy routes use hyphens (register-begin), direct igai uses slashes (register/begin)
+  const p = (path: string) => isProxy ? path.replace(/\//g, '-') : path
 
   const [tab, setTab] = useState<Tab>('profile')
 
@@ -91,10 +100,10 @@ export function AccountView({ appearance, className }: AccountViewProps) {
         ))}
       </div>
 
-      {tab === 'profile'  && <ProfileTab user={user} baseUrl={baseUrl} accountId={accountId} getToken={getToken} />}
-      {tab === 'security' && <SecurityTab user={user} baseUrl={baseUrl} accountId={accountId} getToken={getToken} />}
-      {tab === 'sessions' && <SessionsTab baseUrl={baseUrl} accountId={accountId} getToken={getToken} currentSessionId={user.sessionId} />}
-      {tab === 'passkeys' && <PasskeysTab baseUrl={baseUrl} accountId={accountId} getToken={getToken} />}
+      {tab === 'profile'  && <ProfileTab user={user} baseUrl={usersBase} accountId={accountId} getToken={getToken} />}
+      {tab === 'security' && <SecurityTab user={user} baseUrl={authBase} accountId={accountId} getToken={getToken} p={p} />}
+      {tab === 'sessions' && <SessionsTab baseUrl={sessionsBase} accountId={accountId} getToken={getToken} currentSessionId={user.sessionId} />}
+      {tab === 'passkeys' && <PasskeysTab baseUrl={authBase} accountId={accountId} getToken={getToken} p={p} />}
     </div>
   )
 }
@@ -115,7 +124,7 @@ function ProfileTab({ user, baseUrl, accountId, getToken }: any) {
     setSaving(true)
     try {
       const token = await getToken()
-      const res = await fetch(`${baseUrl}/api/v1/idm/users/me`, {
+      const res = await fetch(`${baseUrl}/me`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
@@ -181,7 +190,7 @@ function ProfileTab({ user, baseUrl, accountId, getToken }: any) {
 
 // ── Security tab ─────────────────────────────────────────────────────────────
 
-function SecurityTab({ user, baseUrl, accountId, getToken }: any) {
+function SecurityTab({ user, baseUrl, accountId, getToken, p }: any) {
   const [pwOld, setPwOld]       = useState('')
   const [pwNew, setPwNew]       = useState('')
   const [pwSaving, setPwSaving] = useState(false)
@@ -200,7 +209,7 @@ function SecurityTab({ user, baseUrl, accountId, getToken }: any) {
     setPwSaving(true)
     try {
       const token = await getToken()
-      const res = await fetch(`${baseUrl}/api/v1/idm/auth/change-password`, {
+      const res = await fetch(`${baseUrl}/change-password`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -221,7 +230,7 @@ function SecurityTab({ user, baseUrl, accountId, getToken }: any) {
   async function startTotpEnroll() {
     setTotpError(null)
     const token = await getToken()
-    const res = await fetch(`${baseUrl}/api/v1/idm/auth/totp/enroll`, {
+    const res = await fetch(`${baseUrl}/${p('totp/enroll')}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -242,7 +251,7 @@ function SecurityTab({ user, baseUrl, accountId, getToken }: any) {
     e.preventDefault()
     setTotpError(null)
     const token = await getToken()
-    const res = await fetch(`${baseUrl}/api/v1/idm/auth/totp/confirm`, {
+    const res = await fetch(`${baseUrl}/${p('totp/confirm')}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -344,7 +353,7 @@ function SessionsTab({ baseUrl, accountId, getToken, currentSessionId }: any) {
     setLoading(true)
     try {
       const token = await getToken()
-      const res = await fetch(`${baseUrl}/api/v1/idm/sessions?accountId=${accountId}`, {
+      const res = await fetch(`${baseUrl}?accountId=${accountId}`, {
         headers: token ? { Authorization: `Bearer ${token}` } : {},
       })
       const d = await res.json().catch(() => ({}))
@@ -362,7 +371,7 @@ function SessionsTab({ baseUrl, accountId, getToken, currentSessionId }: any) {
     setRevoking(sessionId)
     try {
       const token = await getToken()
-      await fetch(`${baseUrl}/api/v1/idm/sessions/${sessionId}`, {
+      await fetch(`${baseUrl}/${sessionId}`, {
         method: 'DELETE',
         headers: token ? { Authorization: `Bearer ${token}` } : {},
       })
@@ -450,7 +459,7 @@ function SessionsTab({ baseUrl, accountId, getToken, currentSessionId }: any) {
 
 // ── Passkeys tab ─────────────────────────────────────────────────────────────
 
-function PasskeysTab({ baseUrl, accountId, getToken }: any) {
+function PasskeysTab({ baseUrl, accountId, getToken, p }: any) {
   const [passkeys, setPasskeys] = useState<Passkey[]>([])
   const [loading, setLoading]   = useState(true)
   const [deleting, setDeleting] = useState<string | null>(null)
@@ -461,7 +470,7 @@ function PasskeysTab({ baseUrl, accountId, getToken }: any) {
     setLoading(true)
     try {
       const token = await getToken()
-      const res = await fetch(`${baseUrl}/api/v1/idm/auth/passkey/credentials?accountId=${accountId}`, {
+      const res = await fetch(`${baseUrl}/passkey/credentials?accountId=${accountId}`, {
         headers: token ? { Authorization: `Bearer ${token}` } : {},
       })
       const d = await res.json().catch(() => ({}))
@@ -479,7 +488,7 @@ function PasskeysTab({ baseUrl, accountId, getToken }: any) {
     setDeleting(passkeyId)
     try {
       const token = await getToken()
-      await fetch(`${baseUrl}/api/v1/idm/auth/passkey/credentials/${passkeyId}`, {
+      await fetch(`${baseUrl}/passkey/credentials/${passkeyId}`, {
         method: 'DELETE',
         headers: token ? { Authorization: `Bearer ${token}` } : {},
       })
@@ -497,7 +506,7 @@ function PasskeysTab({ baseUrl, accountId, getToken }: any) {
       if (!isWebAuthnSupported()) throw new Error('WebAuthn is not supported in this browser')
 
       const token = await getToken()
-      const beginRes = await fetch(`${baseUrl}/api/v1/idm/auth/passkey/register/begin`, {
+      const beginRes = await fetch(`${baseUrl}/passkey/${p('register/begin')}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
         body: JSON.stringify({ accountId }),
@@ -520,7 +529,7 @@ function PasskeysTab({ baseUrl, accountId, getToken }: any) {
       if (!credential) throw new Error('Registration cancelled')
 
       const attestation = credential.response as AuthenticatorAttestationResponse
-      const completeRes = await fetch(`${baseUrl}/api/v1/idm/auth/passkey/register/complete`, {
+      const completeRes = await fetch(`${baseUrl}/passkey/${p('register/complete')}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
         body: JSON.stringify({

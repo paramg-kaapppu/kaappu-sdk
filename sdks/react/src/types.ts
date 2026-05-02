@@ -140,6 +140,10 @@ export interface LoginPanelProps {
   appearance?: KaappuAppearance
   /** Custom CSS class for the card wrapper */
   className?: string
+  /** Override OAuth redirect base URL (e.g., for WordPress proxy). If set, OAuth goes to {oauthProxyUrl}/{provider} instead of {baseUrl}/oauth/{provider} */
+  oauthProxyUrl?: string
+  /** List of OAuth providers to show (e.g., ['google']). If set, only these are shown. */
+  allowedProviders?: string[]
 }
 
 /** RegisterPanel props */
